@@ -4,7 +4,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import debug, health
 from app.config import get_settings
 from app.observability.logging import (
     RequestIDMiddleware,
@@ -25,6 +25,8 @@ log = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     """Run startup and shutdown hooks."""
+    from app.db.session import dispose_engine
+
     log.info(
         "app_starting",
         environment=settings.environment,
@@ -32,6 +34,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         log_level=settings.log_level,
     )
     yield
+    await dispose_engine()
     log.info("app_shutdown")
 
 
@@ -47,6 +50,7 @@ app.add_middleware(RequestIDMiddleware)
 
 # Routers
 app.include_router(health.router)
+app.include_router(debug.router)
 
 
 @app.get("/")
