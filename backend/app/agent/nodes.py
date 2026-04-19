@@ -199,28 +199,40 @@ async def respond_node(state: AgentState, ctx: NodeContext) -> dict[str, Any]:
     tier_announcement: str | None = None
 
     if qr is not None and qr.is_complete:
-        # Case 1: we have a tier
+        # Case 1: we have a tier — announce it and END the conversation.
+        # The 'DO NOT ask' instruction is critical; without it the LLM
+        # tends to add a follow-up question out of helpfulness.
+        closing_instruction = (
+            "This is the FINAL message of the conversation. "
+            "Do NOT ask any follow-up questions. "
+            "Do NOT offer additional help. "
+            "End warmly in 1-2 sentences."
+        )
         if qr.tier == LeadTier.TIER_1:
             tier_announcement = (
                 "Tell the customer they're a high priority for us, "
                 "thank them for the conversation, and let them know an "
-                "account executive will reach out within one business day."
+                "account executive will reach out within one business day. "
+                + closing_instruction
             )
         elif qr.tier == LeadTier.TIER_2:
             tier_announcement = (
                 "Tell the customer they're a good fit for follow-up, thank "
-                "them, and mention a specialist will reach out this week."
+                "them, and mention a specialist will reach out this week. "
+                + closing_instruction
             )
         elif qr.tier == LeadTier.TIER_3:
             tier_announcement = (
                 "Thank the customer warmly, mention we'll add them to our "
-                "nurture list with relevant content as their needs evolve."
+                "nurture list with relevant content as their needs evolve. "
+                + closing_instruction
             )
         else:
             tier_announcement = (
                 "Thank the customer for their time, and let them know we "
                 "don't currently have an offer that fits their situation "
-                "but they're welcome to reach back out later."
+                "but they're welcome to reach back out later. "
+                + closing_instruction
             )
     elif state.get("user_said_dont_know") and state.get("annual_usage_mwh") is None:
         # Case 2: fallback

@@ -89,8 +89,15 @@ async def run_turn(
     # Run the graph
     final_state = await graph.ainvoke(initial_state)
 
-    # If qualification completed, mark the conversation closed
-    if final_state.get("final_tier") is not None:
+    # Only treat qualification as real if it's both present AND complete
+    qr = final_state.get("qualification")
+    is_truly_qualified = (
+        qr is not None
+        and qr.is_complete
+        and final_state.get("final_tier") is not None
+    )
+
+    if is_truly_qualified:
         await repositories.update_conversation_status(
             session,
             conversation_id,
@@ -107,7 +114,7 @@ async def run_turn(
         "assistant_message": final_state.get("assistant_message", ""),
         "final_tier": (
             final_state["final_tier"].value
-            if final_state.get("final_tier") is not None
+            if is_truly_qualified
             else None
         ),
     }
@@ -329,31 +336,37 @@ def _build_response_hints(qr, user_said_dont_know, profile):
     from app.db.types import LeadTier
 
     if qr.is_complete:
+        closing_instruction = (
+            "This is the FINAL message of the conversation. "
+            "Do NOT ask any follow-up questions. "
+            "Do NOT offer additional help. "
+            "End warmly in 1-2 sentences."
+        )
         if qr.tier == LeadTier.TIER_1:
             return None, (
                 "Tell the customer they're a high priority for us, "
                 "thank them for the conversation, and let them know an "
                 "account executive will reach out within one business day. "
-                "DO NOT ask any more questions."
+                + closing_instruction
             )
         elif qr.tier == LeadTier.TIER_2:
             return None, (
                 "Tell the customer they're a good fit for follow-up, thank "
                 "them, and mention a specialist will reach out this week. "
-                "DO NOT ask any more questions."
+                + closing_instruction
             )
         elif qr.tier == LeadTier.TIER_3:
             return None, (
                 "Thank the customer warmly, mention we'll add them to our "
                 "nurture list with relevant content as their needs evolve. "
-                "DO NOT ask any more questions."
+                + closing_instruction
             )
         else:
             return None, (
                 "Thank the customer for their time, and let them know we "
                 "don't currently have an offer that fits their situation "
                 "but they're welcome to reach back out later. "
-                "DO NOT ask any more questions."
+                + closing_instruction
             )
 
     if user_said_dont_know and profile and not profile.annual_usage_mwh:
