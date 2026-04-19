@@ -18,6 +18,10 @@ dependencies = [
 
     # Observability
     "structlog>=24.4.0",
+
+     # Database & cache clients
+    "asyncpg>=0.30.0",
+    "redis>=5.2.0",
 ]
 
 [project.optional-dependencies]

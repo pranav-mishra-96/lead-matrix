@@ -4,6 +4,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
+from app.api import health
 from app.config import get_settings
 from app.observability.logging import (
     RequestIDMiddleware,
@@ -13,8 +14,6 @@ from app.observability.logging import (
 
 settings = get_settings()
 
-# Configure logging BEFORE anything else runs. JSON in production,
-# pretty console output in dev — both fully structured.
 configure_logging(
     log_level=settings.log_level,
     json_output=settings.is_production,
@@ -25,11 +24,7 @@ log = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Run startup and shutdown hooks.
-
-    We log at startup so operators can see the app came up with the
-    expected config. On shutdown we log so graceful stops are visible.
-    """
+    """Run startup and shutdown hooks."""
     log.info(
         "app_starting",
         environment=settings.environment,
@@ -48,14 +43,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Install request ID middleware before any routes are called
 app.add_middleware(RequestIDMiddleware)
 
-
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    """Simple liveness probe for Docker and load balancers."""
-    return {"status": "ok"}
+# Routers
+app.include_router(health.router)
 
 
 @app.get("/")
