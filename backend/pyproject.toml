@@ -15,6 +15,9 @@ dependencies = [
 
     # Environment
     "python-dotenv>=1.0.1",
+
+    # Observability
+    "structlog>=24.4.0",
 ]
 
 [project.optional-dependencies]
