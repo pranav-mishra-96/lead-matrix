@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.runner import run_turn
 from app.db import repositories
 from app.db.session import get_db_session
+from fastapi.responses import StreamingResponse
+from app.agent.runner import run_turn_streaming
+
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -86,4 +89,60 @@ async def send_message(
     return SendMessageOut(
         assistant_message=result["assistant_message"],
         final_tier=result["final_tier"],
+    )
+
+@router.post(
+    "/{conversation_id}/stream",
+    summary="Send a message and stream the agent's response via SSE",
+    responses={
+        200: {
+            "content": {"text/event-stream": {}},
+            "description": "Server-sent events stream",
+        },
+    },
+)
+async def stream_message(
+    conversation_id: uuid.UUID,
+    payload: SendMessageIn,
+    session: AsyncSession = Depends(get_db_session),
+) -> StreamingResponse:
+    """Stream the agent's response as Server-Sent Events.
+
+    Event types (see app/schemas/events.py):
+      - profile: snapshot of collected lead data
+      - tier: final qualification outcome (only when decided)
+      - token: content chunk from the LLM
+      - done: end of stream
+      - error: something went wrong
+
+    Frontend uses EventSource to consume this.
+    """
+    conversation = await repositories.get_conversation(session, conversation_id)
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    async def event_stream():
+        try:
+            async for sse_line in run_turn_streaming(
+                session=session,
+                conversation_id=conversation_id,
+                user_message=payload.content,
+            ):
+                yield sse_line
+        except Exception as exc:
+            import json
+            error_payload = json.dumps({"type": "error", "message": str(exc)})
+            yield f"data: {error_payload}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # disable buffering in nginx/proxies
+        },
     )
