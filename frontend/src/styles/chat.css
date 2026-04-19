@@ -5,6 +5,7 @@
   --border: #e1e4e8;
   --text: #1a1f2e;
   --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --user-bubble: #2563eb;
@@ -13,6 +14,17 @@
   --assistant-text: #1a1f2e;
   --error-bg: #fee2e2;
   --error-text: #991b1b;
+  --success: #10b981;
+  --success-bg: #d1fae5;
+  --success-text: #065f46;
+  --warning: #f59e0b;
+  --warning-bg: #fef3c7;
+  --warning-text: #92400e;
+  --muted: #6b7280;
+  --muted-bg: #f3f4f6;
+  --muted-text: #374151;
+  --danger-bg: #fee2e2;
+  --danger-text: #991b1b;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
@@ -22,20 +34,43 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
 }
 
+/* ============================================================================
+ * Top-level layout — chat on left, debug panel on right
+ * ============================================================================ */
+.layout {
+  display: flex;
+  height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+    padding: 0.5rem;
+  }
+}
+
+/* ============================================================================
+ * Chat column
+ * ============================================================================ */
 .chat {
   display: flex;
   flex-direction: column;
-  max-width: 800px;
-  margin: 0 auto;
-  height: 100vh;
+  flex: 1;
+  min-width: 0;
   background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .chat__header {
@@ -95,7 +130,9 @@ body {
   font-size: 0.875rem;
 }
 
-/* ------------------------------------------------------------ Bubbles */
+/* ============================================================================
+ * Message bubbles
+ * ============================================================================ */
 .bubble-row {
   display: flex;
 }
@@ -141,7 +178,9 @@ body {
   51%, 100% { opacity: 0; }
 }
 
-/* ------------------------------------------------------------ Typing indicator */
+/* ============================================================================
+ * Typing indicator
+ * ============================================================================ */
 .typing {
   display: inline-flex;
   gap: 4px;
@@ -164,7 +203,9 @@ body {
   40% { transform: scale(1); opacity: 1; }
 }
 
-/* ------------------------------------------------------------ Input */
+/* ============================================================================
+ * Input
+ * ============================================================================ */
 .input-row {
   display: flex;
   gap: 0.75rem;
@@ -214,4 +255,200 @@ body {
   background: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+/* ============================================================================
+ * Debug panel (right side)
+ * ============================================================================ */
+.debug-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-y: auto;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .debug-panel {
+    width: auto;
+    max-height: 40vh;
+  }
+}
+
+.debug-panel__section {
+  margin-bottom: 1.75rem;
+}
+
+.debug-panel__section:last-child {
+  margin-bottom: 0;
+}
+
+.debug-panel__heading {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  color: var(--text-muted);
+}
+
+/* Field rows in the profile */
+.field {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.3s ease;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field--filled {
+  animation: field-fill 0.4s ease-out;
+}
+
+@keyframes field-fill {
+  from { background: var(--success-bg); }
+  to { background: transparent; }
+}
+
+.field__indicator {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  margin-top: 2px;
+  transition: all 0.2s;
+}
+
+.field__indicator--on {
+  background: var(--success);
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+.field__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.field__label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.field__value {
+  font-size: 0.9375rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.field--empty .field__value {
+  color: var(--text-subtle);
+  font-style: italic;
+}
+
+.field__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: 4px;
+}
+
+/* Tier result */
+.tier-result {
+  text-align: center;
+  padding: 1rem;
+  background: var(--surface-alt);
+  border-radius: 8px;
+}
+
+.tier-badge {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+}
+
+.tier-badge--success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.tier-badge--warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.tier-badge--neutral {
+  background: var(--muted-bg);
+  color: var(--muted-text);
+}
+
+.tier-badge--muted {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.tier-result__description {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.tier-result__rule {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.tier-result__rule code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: var(--text);
+}
+
+/* Pending state */
+.tier-pending {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-style: italic;
+  background: var(--surface-alt);
+  border-radius: 8px;
+}
+
+.tier-pending__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--text-subtle);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
 }
