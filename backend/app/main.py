@@ -1,4 +1,7 @@
 """FastAPI application entry point."""
+
+from fastapi.middleware.cors import CORSMiddleware
+
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -46,7 +49,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS must come first so OPTIONS preflight responses are handled cleanly
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
+)
+
+# Install request ID middleware
 app.add_middleware(RequestIDMiddleware)
+
 
 # Routers
 app.include_router(health.router)
