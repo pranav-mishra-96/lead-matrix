@@ -26,6 +26,9 @@ dependencies = [
     # ORM & migrations
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.14.0",
+
+     # LLM
+    "openai>=1.54.0",
 ]
 
 [project.optional-dependencies]

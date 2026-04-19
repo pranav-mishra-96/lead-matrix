@@ -5,6 +5,11 @@ before we build the real chat API.
 """
 import uuid
 
+from app.llm.factory import get_llm_client
+from app.llm.interface import ChatMessage
+from app.llm.traced import TracedLLMClient
+
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,4 +76,54 @@ async def post_debug_message(
         conversation_id=conversation_id,
         role=message.role.value,
         content=message.content,
+    )
+
+class EchoIn(BaseModel):
+    prompt: str
+
+
+class EchoOut(BaseModel):
+    response: str
+    latency_ms: int | None
+    prompt_tokens: int | None
+    completion_tokens: int | None
+
+
+@router.post(
+    "/conversation/{conversation_id}/llm-echo",
+    response_model=EchoOut,
+)
+async def llm_echo(
+    conversation_id: uuid.UUID,
+    payload: EchoIn,
+    session: AsyncSession = Depends(get_db_session),
+) -> EchoOut:
+    """Send a prompt to the LLM and return the response.
+
+    Uses the TracedLLMClient so this call also persists to agent_traces.
+    Purely for sanity-checking the LLM plumbing.
+    """
+    conversation = await repositories.get_conversation(session, conversation_id)
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
+
+    client = get_llm_client()
+    traced = TracedLLMClient(client, session, conversation_id)
+
+    response = await traced.complete(
+        messages=[
+            ChatMessage(role="system", content="You are a helpful assistant. Answer briefly."),
+            ChatMessage(role="user", content=payload.prompt),
+        ],
+        node_name="debug_echo",
+    )
+
+    return EchoOut(
+        response=response.content,
+        latency_ms=None,  # trace row has this; don't double-track
+        prompt_tokens=response.usage.prompt_tokens if response.usage else None,
+        completion_tokens=response.usage.completion_tokens if response.usage else None,
     )
