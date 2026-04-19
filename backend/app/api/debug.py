@@ -5,6 +5,9 @@ before we build the real chat API.
 """
 import uuid
 
+from app.agent.qualification import QualificationInput, qualify
+from app.db.types import BusinessSegment, ContractStatus
+
 from app.llm.factory import get_llm_client
 from app.llm.interface import ChatMessage
 from app.llm.traced import TracedLLMClient
@@ -126,4 +129,38 @@ async def llm_echo(
         latency_ms=None,  # trace row has this; don't double-track
         prompt_tokens=response.usage.prompt_tokens if response.usage else None,
         completion_tokens=response.usage.completion_tokens if response.usage else None,
+    )
+
+class QualifyIn(BaseModel):
+    business_segment: BusinessSegment | None = None
+    annual_usage_mwh: float | None = None
+    contract_status: ContractStatus | None = None
+    building_age_years: int | None = None
+
+
+class QualifyOut(BaseModel):
+    tier: str
+    matched_rule: str
+    is_complete: bool
+
+
+@router.post("/qualify", response_model=QualifyOut)
+async def debug_qualify(payload: QualifyIn) -> QualifyOut:
+    """Run the qualification function against an arbitrary profile.
+
+    No DB, no LLM — just runs the pure logic. Useful for manually
+    exploring the matrix from Swagger or curl.
+    """
+    result = qualify(
+        QualificationInput(
+            business_segment=payload.business_segment,
+            annual_usage_mwh=payload.annual_usage_mwh,
+            contract_status=payload.contract_status,
+            building_age_years=payload.building_age_years,
+        )
+    )
+    return QualifyOut(
+        tier=result.tier.value,
+        matched_rule=result.matched_rule,
+        is_complete=result.is_complete,
     )
