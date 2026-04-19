@@ -76,11 +76,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount source code for hot-reload during development
-      # The ./backend/app folder on your machine IS the same folder
-      # inside the container, so edits trigger uvicorn's --reload
       - ./backend/app:/app/app
       - ./backend/tests:/app/tests
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
     depends_on:
       postgres:
         condition: service_healthy
