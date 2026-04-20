@@ -1,0 +1,187 @@
+# ============================================================================
+# Agent evaluation scenarios
+#
+# Each scenario drives the agent through a scripted conversation using a
+# FakeLLMClient. Assertions check the final tier, matched rule, and key
+# profile fields. No real LLM calls, no database, no network — just the
+# agent logic exercised against realistic inputs.
+#
+# Fields per scenario:
+#   name:        human-readable description
+#   turns:       list of user messages with the extractions the LLM would
+#                return for each. Add `assistant_reply` to override the
+#                canned reply (rarely needed).
+#   expect:      assertions on final state
+#     tier:      expected final tier
+#     rule:      expected matched rule name
+#     complete:  whether qualification finished (defaults to true)
+#     profile:   optional subset of profile fields to assert
+# ============================================================================
+
+- name: Industrial high priority → Tier 1
+  turns:
+    - user: "We run an industrial plant"
+      extraction:
+        business_segment: industrial
+    - user: "Contract expires in 3 months"
+      extraction:
+        contract_status: expiring_soon
+    - user: "About 700 MWh per year"
+      extraction:
+        annual_usage_mwh: 700
+  expect:
+    tier: tier_1
+    rule: industrial_high_priority
+    profile:
+      annual_usage_mwh: 700
+      usage_was_estimated: false
+
+- name: Industrial followup → Tier 2
+  turns:
+    - user: "Industrial facility"
+      extraction:
+        business_segment: industrial
+    - user: "Contract expires in about 9 months"
+      extraction:
+        contract_status: expiring_within_year
+    - user: "300 MWh annually"
+      extraction:
+        annual_usage_mwh: 300
+    - user: "Building is 3 years old"
+      extraction:
+        building_age_years: 3
+  expect:
+    tier: tier_2
+    rule: industrial_followup
+
+- name: Commercial month-to-month high priority → Tier 1
+  turns:
+    - user: "Commercial business"
+      extraction:
+        business_segment: commercial
+    - user: "Month to month contract"
+      extraction:
+        contract_status: month_to_month
+    - user: "We use about 120 MWh a year"
+      extraction:
+        annual_usage_mwh: 120
+  expect:
+    tier: tier_1
+    rule: commercial_high_priority
+
+- name: Commercial nurture → Tier 3
+  turns:
+    - user: "Commercial office"
+      extraction:
+        business_segment: commercial
+    - user: "Fixed term contract"
+      extraction:
+        contract_status: fixed_term
+    - user: "30 MWh per year"
+      extraction:
+        annual_usage_mwh: 30
+    - user: "Building is 1 year old"
+      extraction:
+        building_age_years: 1
+  expect:
+    tier: tier_3
+    rule: commercial_nurture
+
+- name: No current provider → Tier 1 regardless of usage
+  turns:
+    - user: "Industrial plant"
+      extraction:
+        business_segment: industrial
+    - user: "We don't have a current provider"
+      extraction:
+        contract_status: no_provider
+  expect:
+    tier: tier_1
+    rule: no_current_provider
+
+- name: Fallback — user doesn't know usage, estimate from sq ft
+  turns:
+    - user: "Commercial office"
+      extraction:
+        business_segment: commercial
+    - user: "Honestly I have no idea about our usage"
+      extraction:
+        user_said_dont_know: true
+    - user: "Around 50,000 square feet"
+      extraction:
+        square_footage: 50000
+    - user: "We're on month-to-month"
+      extraction:
+        contract_status: month_to_month
+  expect:
+    tier: tier_1
+    rule: commercial_high_priority
+    profile:
+      # 50,000 sq ft × 15 kWh/sq ft / 1000 = 750 MWh
+      annual_usage_mwh: 750
+      usage_was_estimated: true
+      square_footage: 50000
+
+- name: Industrial followup — building too old (5 yrs exactly)
+  turns:
+    - user: "Industrial"
+      extraction:
+        business_segment: industrial
+    - user: "Contract expiring in 8 months"
+      extraction:
+        contract_status: expiring_within_year
+    - user: "250 MWh"
+      extraction:
+        annual_usage_mwh: 250
+    - user: "Building is 5 years old"
+      extraction:
+        building_age_years: 5
+  expect:
+    # Rule requires < 5 yrs; exactly 5 fails. No other rule matches.
+    tier: unqualified
+    rule: no_match
+    complete: true
+
+- name: Edge case — industrial high priority at exactly 501 MWh
+  turns:
+    - user: "Industrial"
+      extraction:
+        business_segment: industrial
+    - user: "Contract expires next month"
+      extraction:
+        contract_status: expiring_soon
+    - user: "501 MWh"
+      extraction:
+        annual_usage_mwh: 501
+  expect:
+    tier: tier_1
+    rule: industrial_high_priority
+
+- name: Edge case — industrial at exactly 500 MWh fails high-priority rule
+  turns:
+    - user: "Industrial"
+      extraction:
+        business_segment: industrial
+    - user: "Expires in 4 months"
+      extraction:
+        contract_status: expiring_soon
+    - user: "500 MWh"
+      extraction:
+        annual_usage_mwh: 500
+  expect:
+    # industrial_high_priority needs > 500, not >=. Other industrial rule
+    # needs expiring_within_year. No rule matches.
+    tier: unqualified
+    rule: no_match
+    complete: true
+
+- name: Single-turn extraction — all fields at once
+  turns:
+    - user: "We're an industrial facility, 700 MWh annually, contract expires in 3 months"
+      extraction:
+        business_segment: industrial
+        annual_usage_mwh: 700
+        contract_status: expiring_soon
+  expect:
+    tier: tier_1
+    rule: industrial_high_priority
