@@ -1,5 +1,9 @@
 # Strategic Lead Matrix
 
+**🤖 AI-driven commercial energy lead qualification · FastAPI · LangGraph · React · PostgreSQL**
+
+![Strategic Lead Matrix in action](docs/screenshot.png)
+
 > An autonomous AI agent that qualifies commercial energy leads through natural dialogue and multi-variable decision-making.
 
 Built as a full-stack Proof of Concept combining FastAPI, LangGraph, React, and PostgreSQL, orchestrated by Docker Compose. The agent conducts a discovery conversation, extracts structured data turn-by-turn, applies a deterministic qualification matrix, and streams its reasoning to the frontend in real time.
@@ -14,6 +18,7 @@ git clone
 cd lead-matrix
 
 # 2. Add your OpenAI API key
+# For testing I have already set up my API Key so everything will work as expected
 cp .env.example .env
 # Edit .env and set OPENAI_API_KEY
 
